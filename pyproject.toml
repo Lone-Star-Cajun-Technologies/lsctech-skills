@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lsctech-skills"
+version = "0.1.0"
+description = "Capability library and skill index for LSCTech agent workflows"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+include = ["capabilities", "capabilities.*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
