@@ -27,8 +27,8 @@ export async function exportGlobalMemoryToFile(item, memoryDir) {
   const slug = item.title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  const fileName = `${slug}.md`;
+    .replace(/^-+|-+$/g, '') || 'memory';
+  const fileName = `${slug}-${item.id.slice(0, 8)}.md`;
   await mkdir(memoryDir, { recursive: true });
 
   const frontmatter = [

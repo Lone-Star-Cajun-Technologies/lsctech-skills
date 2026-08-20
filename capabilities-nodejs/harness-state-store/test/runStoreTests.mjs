@@ -79,7 +79,7 @@ test('local items are scoped to their task and excluded from global listing', as
 
 test('local scope without a taskId is rejected; global scope with a taskId is rejected', async () => {
   const { store } = await freshStore();
-  await assert.rejects(() => store.create({ type: 'memory', scope: 'local', title: 'x', body: 'y' }), /local scope requires a taskId/);
+  await assert.rejects(() => store.create({ type: 'memory', scope: 'local', title: 'x', body: 'y' }), /local scope requires a nonempty taskId/);
   await assert.rejects(
     () => store.create({ type: 'memory', scope: 'global', taskId: 'task-1', title: 'x', body: 'y' }),
     /global scope must not carry a taskId/,

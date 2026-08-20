@@ -79,6 +79,10 @@ export class ContinualRefinementLayer {
   }
 
   async getSnapshot(snapshotId) {
+    // Validate UUID format to prevent path traversal
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(snapshotId)) {
+      throw new Error(`invalid snapshotId format: ${snapshotId}`);
+    }
     const raw = await readFile(path.join(this.snapshotDir, `${snapshotId}.json`), 'utf8');
     return JSON.parse(raw);
   }
@@ -89,16 +93,56 @@ export class ContinualRefinementLayer {
    * history is never truncated), so "what happened" stays reconstructable
    * even after a group rollback.
    */
-  async restoreSnapshot(snapshotId, { evidence, actor } = {}) {
+  async restoreSnapshot(snapshotId, { evidence, actor, reviewer, forceApprove = false } = {}) {
     const record = await this.getSnapshot(snapshotId);
-    const restored = [];
+
+    // Preflight validation: check all items before performing any rollback
+    const preflightErrors = [];
     for (const entry of record.items) {
-      const item = await this.store.rollback(entry.id, entry.revision, {
-        evidence,
-        actor,
-        note: `restore snapshot ${snapshotId}`,
-      });
-      restored.push({ id: entry.id, currentRevision: item.currentRevision });
+      try {
+        const current = await this.store.get(entry.id);
+        const target = current.history.find((h) => h.revision === entry.revision);
+        if (!target) {
+          preflightErrors.push({ id: entry.id, error: `no revision ${entry.revision} for item ${entry.id}` });
+        }
+      } catch (err) {
+        preflightErrors.push({ id: entry.id, error: String(err?.message ?? err) });
+      }
+    }
+    if (preflightErrors.length > 0) {
+      throw new Error(`restoreSnapshot preflight failed: ${JSON.stringify(preflightErrors)}`);
+    }
+
+    const restored = [];
+    const failed = [];
+    for (const entry of record.items) {
+      try {
+        const current = await this.store.get(entry.id);
+        const target = current.history.find((h) => h.revision === entry.revision);
+        // Skip no-op rollbacks where the item's body hasn't changed since the snapshot
+        if (current.body === target.body) {
+          restored.push({ id: entry.id, currentRevision: current.currentRevision });
+          continue;
+        }
+        const result = await this.reviewAndRollback({
+          itemId: entry.id,
+          toRevision: entry.revision,
+          evidence,
+          actor,
+          reviewer,
+          forceApprove,
+        });
+        if (result.applied) {
+          restored.push({ id: entry.id, currentRevision: result.item.currentRevision });
+        } else {
+          failed.push({ id: entry.id, reasons: result.reasons });
+        }
+      } catch (err) {
+        failed.push({ id: entry.id, error: String(err?.message ?? err) });
+      }
+    }
+    if (failed.length > 0) {
+      throw new Error(`restoreSnapshot partial failure: restored ${restored.length}, failed ${failed.length}: ${JSON.stringify(failed)}`);
     }
     return { snapshotId, restored };
   }

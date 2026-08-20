@@ -29,7 +29,7 @@ was left out.
 - `compaction` — `{ thresholdTokens, keepRecentTokens }`.
 
 **Outputs** — `{ stopReason, iterations, trace, budgetSnapshot,
-registrySnapshot, noProgressSnapshot, finalEvaluation }`.
+registrySnapshot, noProgressSnapshot, finalEvaluation, exhaustedDimension }`.
 
 **State** — held only in the call's locals (`BudgetTracker`,
 `ChildAgentRegistry`, `NoProgressDetector`, an append-only `trace[]`).
@@ -66,9 +66,11 @@ registry, no-progress detection, compaction) is self-contained.
 - `src/compaction.mjs` — token-threshold trace summarization, keeping a
   recent window verbatim.
 - `src/recursiveLoop.mjs` — orchestrator (`runRecursiveLoop`).
+- `src/paperclipSpawn.mjs` — Paperclip task-lifecycle integration.
 - `test/runLoopTests.mjs` — acceptance-criteria test loop: exercises all
   four stop modes plus usage attribution and compaction. Run with
   `node test/runLoopTests.mjs`.
+- `test/paperclipSpawnTests.mjs` — tests for Paperclip spawner integration.
 
 ## Paperclip task-lifecycle integration (`src/paperclipSpawn.mjs`)
 

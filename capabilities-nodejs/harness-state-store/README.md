@@ -41,7 +41,7 @@ where each `history[]` entry is `{revision, action, body, evidence, actor,
 note, timestamp}`.
 
 **Storage** (`rootDir`, caller-supplied) —
-```
+```text
 global/<type>/<id>.json          organization-wide items
 tasks/<taskId>/<type>/<id>.json  task-scoped items
 index.json                       id -> {type, scope, taskId} routing table

@@ -44,8 +44,16 @@ const STATUS_TO_SIGNAL = Object.freeze({
 });
 
 async function paperclipRequest(fetchImpl, apiBase, apiKey, path, opts = {}) {
+  // Apply default timeout while respecting caller-provided signal
+  const defaultTimeout = 30000; // 30 seconds
+  const timeoutSignal = opts.timeoutMs !== undefined ? AbortSignal.timeout(opts.timeoutMs) : AbortSignal.timeout(defaultTimeout);
+  const signal = opts.signal
+    ? (opts.signal.aborted ? opts.signal : AbortSignal.any([opts.signal, timeoutSignal]))
+    : timeoutSignal;
+
   const res = await fetchImpl(`${apiBase}${path}`, {
     ...opts,
+    signal,
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
@@ -78,8 +86,8 @@ async function paperclipRequest(fetchImpl, apiBase, apiKey, path, opts = {}) {
  * @param {typeof fetch} [opts.fetchImpl]
  * @returns {Promise<{inputTokens: number, outputTokens: number, totalTokens: number, runCount: number, pendingRunCount: number}>}
  */
-export async function fetchIssueTokenUsage({ apiBase, apiKey, issueId, fetchImpl = fetch }) {
-  const runsResp = await paperclipRequest(fetchImpl, apiBase, apiKey, `/api/issues/${issueId}/runs`);
+export async function fetchIssueTokenUsage({ apiBase, apiKey, issueId, fetchImpl = fetch, signal = undefined, timeoutMs = undefined }) {
+  const runsResp = await paperclipRequest(fetchImpl, apiBase, apiKey, `/api/issues/${issueId}/runs`, { signal, timeoutMs });
   const runs = Array.isArray(runsResp) ? runsResp : (runsResp?.runs ?? []);
   let inputTokens = 0;
   let outputTokens = 0;
@@ -120,6 +128,7 @@ export function createPaperclipSpawner({
   maxDepth,
   spawningAgentId = null,
   fetchImpl = fetch,
+  defaultTimeoutMs = undefined,
 }) {
   if (!apiBase || !apiKey || !parentIssueId) {
     throw new Error('createPaperclipSpawner requires apiBase, apiKey, and parentIssueId');
@@ -127,7 +136,7 @@ export function createPaperclipSpawner({
   if (!Number.isInteger(maxDepth) || maxDepth < 0) {
     throw new Error('createPaperclipSpawner requires a non-negative integer maxDepth');
   }
-  const call = (path, opts) => paperclipRequest(fetchImpl, apiBase, apiKey, path, opts);
+  const call = (path, opts) => paperclipRequest(fetchImpl, apiBase, apiKey, path, { timeoutMs: defaultTimeoutMs, ...opts });
 
   /**
    * spawn(task_spec) -> handle. Non-blocking: creates a real child issue
@@ -149,6 +158,8 @@ export function createPaperclipSpawner({
    * @param {{maxWallClockMs?: number}} [taskSpec.budget]
    * @param {boolean} [taskSpec.blockParentUntilDone=true]
    * @param {string} [taskSpec.watchdogAgentId] defaults to the spawning agent itself
+   * @param {AbortSignal} [taskSpec.signal] caller-provided abort signal
+   * @param {number} [taskSpec.timeoutMs] request timeout override
    * @returns {Promise<{childIssueId: string, identifier: string, depth: number, spawnedAt: string}>}
    */
   async function spawn(taskSpec) {
@@ -189,6 +200,8 @@ export function createPaperclipSpawner({
     const created = await call(`/api/issues/${parentIssueId}/children`, {
       method: 'POST',
       body: JSON.stringify(body),
+      signal: taskSpec.signal,
+      timeoutMs: taskSpec.timeoutMs,
     });
     const child = Array.isArray(created) ? created[0] : (created?.issues?.[0] ?? created?.issue ?? created);
     if (!child?.id) {
@@ -214,19 +227,27 @@ export function createPaperclipSpawner({
    * so the parent's budget reflects what the child actually spent, not an
    * allocated/estimated figure.
    *
-   * @param {{childIssueId: string}} handle
+   * @param {{childIssueId: string, signal?: AbortSignal, timeoutMs?: number}} handle
    */
   async function collectResult(handle) {
-    const issue = await call(`/api/issues/${handle.childIssueId}`);
+    const issue = await call(`/api/issues/${handle.childIssueId}`, { signal: handle.signal, timeoutMs: handle.timeoutMs });
     const signal = STATUS_TO_SIGNAL[issue.status] ?? null;
     let message = null;
     let usage = null;
     if (signal) {
-      const commentsResp = await call(`/api/issues/${handle.childIssueId}/comments`);
+      const commentsResp = await call(`/api/issues/${handle.childIssueId}/comments`, { signal: handle.signal, timeoutMs: handle.timeoutMs });
       const comments = Array.isArray(commentsResp) ? commentsResp : (commentsResp?.comments ?? []);
-      const agentComments = comments.filter((c) => c.authorType === 'agent' && !c.deletedAt);
+      const agentComments = comments
+        .filter((c) => c.authorType === 'agent' && !c.deletedAt)
+        .sort((a, b) => {
+          // Sort by createdAt timestamp, falling back to id comparison if timestamps equal
+          const timeA = new Date(a.createdAt || 0).getTime();
+          const timeB = new Date(b.createdAt || 0).getTime();
+          if (timeA !== timeB) return timeA - timeB;
+          return (a.id ?? '').localeCompare(b.id ?? '');
+        });
       message = agentComments.length ? agentComments[agentComments.length - 1].body : null;
-      usage = await fetchIssueTokenUsage({ apiBase, apiKey, issueId: handle.childIssueId, fetchImpl });
+      usage = await fetchIssueTokenUsage({ apiBase, apiKey, issueId: handle.childIssueId, fetchImpl, signal: handle.signal, timeoutMs: handle.timeoutMs });
     }
     return { status: issue.status, signal, message, issue, usage };
   }
@@ -248,9 +269,12 @@ export function createPaperclipSpawner({
    * itself (this spawner's `parentIssueId`), so a long-running loop can
    * reconcile its own `BudgetTracker` against what it has actually spent
    * across wakes, the same way it does for children via `collectResult`.
+   * @param {Object} [opts]
+   * @param {AbortSignal} [opts.signal]
+   * @param {number} [opts.timeoutMs]
    */
-  function fetchOwnTokenUsage() {
-    return fetchIssueTokenUsage({ apiBase, apiKey, issueId: parentIssueId, fetchImpl });
+  function fetchOwnTokenUsage(opts = {}) {
+    return fetchIssueTokenUsage({ apiBase, apiKey, issueId: parentIssueId, fetchImpl, signal: opts.signal, timeoutMs: opts.timeoutMs });
   }
 
   return { spawn, collectResult, requireResult, fetchOwnTokenUsage };

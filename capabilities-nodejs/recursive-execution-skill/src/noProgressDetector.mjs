@@ -9,6 +9,9 @@ export class NoProgressDetector {
     if (!(Number.isInteger(patience) && patience >= 1)) {
       throw new Error('NoProgressDetector: patience must be a positive integer');
     }
+    if (!(Number.isFinite(epsilon) && epsilon >= 0)) {
+      throw new Error('NoProgressDetector: epsilon must be a non-negative finite number');
+    }
     this.patience = patience;
     this.epsilon = epsilon;
     this.bestScore = -Infinity;

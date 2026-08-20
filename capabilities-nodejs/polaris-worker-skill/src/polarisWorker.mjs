@@ -103,6 +103,7 @@ export async function runPolarisWorker(packet, hooks, { depth = 0, maxDepth = 1 
   let lastVerification = null;
   const medicIterations = [];
 
+  let previousBudgetSnapshot = null;
   const evaluate = async (state) => {
     workProduct = await hooks.implement({
       attempt: state.iteration,
@@ -111,10 +112,26 @@ export async function runPolarisWorker(packet, hooks, { depth = 0, maxDepth = 1 
     });
     lastVerification = await verifyAcceptanceCriteria(workProduct, acceptanceCriteria);
 
+    // Compute budget consumption as delta from previous iteration
+    // (state.budget is the snapshot at iteration start, before this iteration's consumption)
+    const budgetConsumption = previousBudgetSnapshot
+      ? {
+          tokensUsed: state.budget.tokensUsed - previousBudgetSnapshot.tokensUsed,
+          turnsUsed: state.budget.turnsUsed - previousBudgetSnapshot.turnsUsed,
+          wallClockMs: state.budget.elapsedMs - previousBudgetSnapshot.elapsedMs,
+          continuationsUsed: state.budget.continuationsUsed - previousBudgetSnapshot.continuationsUsed,
+        }
+      : {
+          tokensUsed: state.budget.tokensUsed,
+          turnsUsed: state.budget.turnsUsed,
+          wallClockMs: state.budget.elapsedMs,
+          continuationsUsed: state.budget.continuationsUsed,
+        };
+    previousBudgetSnapshot = state.budget;
+
     // Structured trace output for Medic logging (LON-70 scope item, LON-64
     // acceptance criteria: "logs each iteration's evaluation outcome, budget
-    // consumption, and exit reason"). Captured per-iteration here since the
-    // underlying loop only snapshots budget on demand via `state.budget`.
+    // consumption, and exit reason").
     medicIterations.push({
       attempt: state.iteration,
       evaluationOutcome: {
@@ -122,7 +139,7 @@ export async function runPolarisWorker(packet, hooks, { depth = 0, maxDepth = 1 
         score: lastVerification.score,
         criteria: lastVerification.results,
       },
-      budgetConsumption: state.budget,
+      budgetConsumption,
     });
 
     return { passed: lastVerification.passed, score: lastVerification.score };

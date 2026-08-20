@@ -24,10 +24,15 @@ export function assertValidItemInput({ type, scope, taskId, title, body }) {
   if (!SCOPES.includes(scope)) {
     throw new Error(`invalid scope ${JSON.stringify(scope)}; must be one of ${SCOPES.join(', ')}`);
   }
-  if (scope === 'local' && !taskId) {
-    throw new Error('local scope requires a taskId');
+  if (scope === 'local') {
+    if (!taskId || typeof taskId !== 'string' || !taskId.trim()) {
+      throw new Error('local scope requires a nonempty taskId');
+    }
+    if (taskId.includes('/') || taskId.includes('\\') || taskId === '.' || taskId === '..' || taskId.includes('\0')) {
+      throw new Error('taskId must not contain path separators or . / .. components');
+    }
   }
-  if (scope === 'global' && taskId) {
+  if (scope === 'global' && taskId != null) {
     throw new Error('global scope must not carry a taskId (organization-wide, not task-bound)');
   }
   if (!title || typeof title !== 'string') {

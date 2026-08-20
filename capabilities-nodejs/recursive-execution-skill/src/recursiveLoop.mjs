@@ -88,9 +88,12 @@ export async function runRecursiveLoop(config) {
   const registry = new ChildAgentRegistry();
   const progress = new NoProgressDetector({ patience: noProgressPatience, epsilon: noProgressEpsilon });
   let trace = [];
+  let traceIdCounter = 0;
 
   const pushTrace = (entry) => {
-    trace.push({ id: `t-${trace.length}`, parentId: trace.length ? trace[trace.length - 1].id : null, ...entry });
+    const id = `t-${traceIdCounter++}`;
+    const parentId = trace.length > 0 ? trace[trace.length - 1].id : null;
+    trace.push({ id, parentId, ...entry });
     const result = compactIfNeeded(trace, compaction);
     trace = result.entries;
   };

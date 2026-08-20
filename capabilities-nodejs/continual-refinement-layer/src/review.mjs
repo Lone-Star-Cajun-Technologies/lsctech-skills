@@ -48,9 +48,14 @@ export function reviewProposal({
 
   if (typeof proposedBody === 'string' && proposedBody !== currentBody) {
     const changed = lineChangeCount(currentBody, proposedBody);
-    const baseline = Math.max(currentBody.split('\n').length, 1);
+    const baseline = currentBody.split('\n').length + proposedBody.split('\n').length;
     const ratio = changed / baseline;
-    if (changed > maxChangedLines && ratio > maxChangeRatio) {
+    const currentLines = currentBody.split('\n').length;
+    // Only apply ratio check when body is long enough for ratio to be meaningful.
+    // For very short bodies (< 5 lines), line-level diffing always reports high
+    // ratios since partial-line edits can't be represented at line granularity.
+    const applyRatioCheck = currentLines >= 5;
+    if (changed > maxChangedLines || (applyRatioCheck && ratio > maxChangeRatio)) {
       reasons.push(`edit touches ${changed} lines (${Math.round(ratio * 100)}% of current body) — exceeds the small-edit cap of ${maxChangedLines} lines / ${Math.round(maxChangeRatio * 100)}%; split into smaller proposals`);
     }
   }

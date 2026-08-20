@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rm, rename } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { assertValidItemInput, assertEvidence } from './schema.mjs';
@@ -42,7 +42,9 @@ export class HarnessStateStore {
 
   async _writeIndex(index) {
     await mkdir(this.rootDir, { recursive: true });
-    await writeFile(this.indexPath, JSON.stringify(index, null, 2));
+    const tempPath = `${this.indexPath}.tmp.${Date.now()}`;
+    await writeFile(tempPath, JSON.stringify(index, null, 2));
+    await rename(tempPath, this.indexPath);
   }
 
   _itemDir(scope, type, taskId) {
@@ -66,7 +68,10 @@ export class HarnessStateStore {
   async _writeItem(item, entry) {
     const dir = this._itemDir(entry.scope, entry.type, entry.taskId);
     await mkdir(dir, { recursive: true });
-    await writeFile(this._itemPath(entry), JSON.stringify(item, null, 2));
+    const itemPath = this._itemPath(entry);
+    const tempPath = `${itemPath}.tmp.${Date.now()}`;
+    await writeFile(tempPath, JSON.stringify(item, null, 2));
+    await rename(tempPath, itemPath);
   }
 
   /** Create a new item at revision 0. Returns the stored item. */

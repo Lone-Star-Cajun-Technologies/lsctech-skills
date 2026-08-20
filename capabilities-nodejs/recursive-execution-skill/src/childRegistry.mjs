@@ -45,7 +45,8 @@ export class ChildAgentRegistry {
   recordUsage(id, usage = {}) {
     const record = this._children.get(id);
     if (!record) throw new Error(`ChildAgentRegistry: unknown child id ${id}`);
-    record.usage.tokens += usage.tokens ?? 0;
+    // Prefer usage.totalTokens (real Paperclip usage) over usage.tokens (harness-agnostic/mock)
+    record.usage.tokens += usage.totalTokens ?? usage.tokens ?? 0;
     record.usage.turns += usage.turns ?? 0;
     record.updatedAt = Date.now();
     return record;
