@@ -4,6 +4,21 @@ All notable changes to this repository are documented here. Format based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions
 correspond to `VERSION`.
 
+## [0.2.0] - 2026-08-20
+
+### Added
+
+- `capabilities-nodejs/` (LON-119): landed the four Prime-derived
+  capability modules LON-101 finding F1 reported as lost —
+  `recursive-execution-skill`, `harness-state-store`,
+  `continual-refinement-layer`, `polaris-worker-skill`. Recovered from an
+  un-pushed agent sandbox where they had been built and tested (43/43
+  tests passing) but had no durable repository home. JavaScript/Node, not
+  Python — see README.md's "Node.js capability implementations" section
+  for why, and the open question this raises for Epic 8/9.
+- `test-nodejs` CI matrix job running each module's test suite on every
+  push/PR.
+
 ## [0.1.0] - 2026-08-19
 
 ### Added

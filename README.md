@@ -70,6 +70,51 @@ lsctech-skills/
     bounded-continuation/SKILL.md
 ```
 
+
+## Node.js capability implementations (`capabilities-nodejs/`, landed LON-119)
+
+The four Prime-derived modules LON-101 finding F1 reported as lost
+(`recursive-execution-skill`, `harness-state-store`,
+`continual-refinement-layer`, `polaris-worker-skill`) were not lost — they
+were stranded in an un-pushed agent sandbox. LON-119 recovered and landed
+them here as-is.
+
+They are **JavaScript/Node (`.mjs`, zero external dependencies)**, not
+Python, and live in `capabilities-nodejs/` rather than inside the
+`capabilities/` package above. This is a deliberate divergence, not an
+oversight: `capabilities/` was scaffolded in LON-103 assuming a *future*
+Python reimplementation under Epic 8/9 (pytest-only CI gate, `__all__ == []`
+stub tests). These modules are already implemented and independently
+tested (43/43 tests passing across all four at landing time). LON-101 §8
+requires preserving existing tested implementations rather than rewriting
+them without a concrete reason — porting working, tested code to Python
+solely to fit the stub layout would be exactly that.
+
+**Open question for Epic 8/9 (Cove/Phil to resolve, not decided here):**
+should this Node.js code become the canonical Epic 8/9 implementation
+(retiring the Python stub plan and updating `pyproject.toml`/CI framing
+accordingly), or should the Python `capabilities/` stubs still get their
+own real implementation alongside this one? See the LON-119 issue thread.
+
+Modules landed, each with its own `README.md`/`src/`/`test/`:
+
+- `capabilities-nodejs/recursive-execution-skill/` — bounded
+  spawn → child → result → parent-continuation loop: budget tracking, depth
+  ceiling, no-progress detection, compaction. 17/17 tests passing.
+- `capabilities-nodejs/harness-state-store/` — typed, scoped
+  (local/global), evidence-gated memory ledger with append-only history and
+  rollback. 12/12 tests passing.
+- `capabilities-nodejs/continual-refinement-layer/` — evidence-gated
+  proposal + review gate, plus multi-item snapshot/restore, built on top of
+  `harness-state-store`. 9/9 tests passing.
+- `capabilities-nodejs/polaris-worker-skill/` — acceptance-criteria
+  quality gate, a self-repair cap distinct from raw budget, and a
+  Medic-shaped trace, built on top of `recursive-execution-skill`.
+  5/5 tests passing.
+
+CI runs every module's test suite on each push/PR via the `test-nodejs`
+matrix job in `.github/workflows/ci.yml`.
+
 As of this revision, every `capabilities/*` module is a stub (package
 metadata + docstring only, no behavior). Real implementations land under
 Epic 8 (recursive execution) and Epic 9 (harness state) — see LON-101 §10.
