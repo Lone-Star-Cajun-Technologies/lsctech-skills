@@ -1,26 +1,38 @@
 ---
 name: harness-state
-description: "Reach for this skill when the agent needs to inspect or surface the current harness/session state."
+description: Persistent, typed harness state (prompt/memory/skill/subagent items, local vs. global scope) for knowledge that must survive across tasks or sessions. Not for transient scratch data, and never inside a Polaris-governed repository.
 version: 0.1.0
-author: LSCTech AI
-license: MIT
-platforms: [macos, linux]
-metadata:
-  hermes:
-    tags: [capabilities, harness, state]
-    related_capabilities: [capabilities.harness_state]
+tags: [state, memory, prime-derived]
 ---
 
 # Harness State
 
-Use this skill when an agent needs to be aware of the run-time harness context.
+**Status: stub.** The underlying capability (`capabilities/harness_state/`)
+is not yet implemented — this SKILL.md documents when an agent should
+reach for it once it lands (LON-101 Epic 9). This file is instruction
+surface only; it does not implement control flow itself.
 
-## When to reach for the capability
+## When to invoke
 
-- You need to report which issue, run, or task is currently active.
-- You need to read or write durable session state without inventing a new storage scheme.
-- You need to surface state to the user or to another agent.
+Knowledge must survive across tasks or sessions: reusable procedures,
+corrections, or durable observations.
 
-## What it is not
+## Do NOT invoke when
 
-- This skill does not implement control flow. It does not start, stop, or transition the harness. It only declares when to reach for `capabilities.harness_state`.
+- The data is transient scratch state for the current task.
+- **You are working inside a Polaris-governed repository.** Polaris's
+  Repository Memory Doctrine deliberately stores memory in repository
+  artifacts, not model memory — do not introduce a competing state
+  ledger there.
+
+## What it provides once implemented
+
+- Four typed item kinds: prompt, memory, skill, subagent.
+- Local vs. global scope.
+- Evidence-gated refine (proposal generation + review gate; see
+  `continual-refinement`), append-only history, and rollback.
+
+## Relationship to governance
+
+Subordinate to Paperclip, the Wiki, and repository rules. Never a
+substitute for any of them.

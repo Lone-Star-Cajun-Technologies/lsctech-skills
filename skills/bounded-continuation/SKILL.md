@@ -1,26 +1,38 @@
 ---
 name: bounded-continuation
-description: "Reach for this skill when continuing an operation that must stay within defined bounds."
+description: Sequential, bounded step-by-step execution where each step advances state without spawning children. Use when work is long but linear; use recursive-execution instead when the work genuinely needs to fan out.
 version: 0.1.0
-author: LSCTech AI
-license: MIT
-platforms: [macos, linux]
-metadata:
-  hermes:
-    tags: [capabilities, continuation, tests]
-    related_capabilities: [capabilities.tests]
+tags: [execution, continuation, prime-derived]
 ---
 
 # Bounded Continuation
 
-Use this skill when the agent should continue a process while ensuring it stays inside explicit limits.
+**Status: stub.** The underlying mechanics live in
+`capabilities/recursive_execution/` and `capabilities/harness_state/`
+(state persistence + resumability), neither of which is yet implemented —
+this SKILL.md documents when an agent should reach for this pattern once
+they land (LON-101 Epic 8/9). This file is instruction surface only; it
+does not implement control flow itself.
 
-## When to reach for the capability
+## When to invoke
 
-- A long-running or multi-step activity needs a continuation point.
-- You need to confirm that the next step still satisfies a budget, scope, or safety bound.
-- The agent should reach for `capabilities.tests` to assert the bound before continuing.
+Work is long but sequential — each step advances state without spawning
+children.
 
-## What it is not
+## Do NOT invoke when
 
-- This skill does not implement the continuation logic or the bound check. It only declares when to reach for the `capabilities.tests` stub.
+Depth is actually needed. Use `recursive-execution` instead of forcing a
+fan-out objective into a linear shape.
+
+## What it provides once implemented
+
+- Chain state persistence and resumability (resume at the last completed
+  step rather than re-running from the start).
+- The same mandatory budget and no-progress-detection requirements as
+  `recursive-execution` (§4.3): every loop needs a budget, no loop is
+  exempt from stagnation detection.
+
+## Relationship to governance
+
+Subordinate to Paperclip, the Wiki, and repository rules, same as every
+other capability in this repository.

@@ -1,1 +1,0 @@
-# Tests for the lsctech-skills skeleton.

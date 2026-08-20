@@ -1,21 +1,17 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "lsctech-skills"
+name = "lsctech-skills-capabilities"
 version = "0.1.0"
-description = "Capability library and skill index for LSCTech agent workflows"
+description = "Importable, tested capability libraries for LSCTech shared agent skills (see README.md — not a product, not an orchestration system)."
 readme = "README.md"
-license = {text = "MIT"}
 requires-python = ">=3.10"
-dependencies = []
-
-[project.optional-dependencies]
-test = ["pytest>=7.0"]
+license = { file = "LICENSE" }
 
 [tool.setuptools.packages.find]
-include = ["capabilities", "capabilities.*"]
+include = ["capabilities*"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["capabilities/tests"]

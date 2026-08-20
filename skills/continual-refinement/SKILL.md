@@ -1,26 +1,38 @@
 ---
 name: continual-refinement
-description: "Reach for this skill when an artifact should be improved iteratively with feedback."
+description: Evidence-gated proposal + review loop for improving a repeated procedure that demonstrably underperforms. Not for acting on a hunch, and not for rewriting doctrine — it proposes, management approves.
 version: 0.1.0
-author: LSCTech AI
-license: MIT
-platforms: [macos, linux]
-metadata:
-  hermes:
-    tags: [capabilities, refinement, trajectory]
-    related_capabilities: [capabilities.trajectory]
+tags: [refinement, review-gate, prime-derived]
 ---
 
 # Continual Refinement
 
-Use this skill when an existing draft or artifact is close but needs another pass.
+**Status: stub.** Depends on `capabilities/harness_state/` (evidence-gated
+refine gate), which is not yet implemented — this SKILL.md documents when
+an agent should reach for this pattern once it lands (LON-101 Epic 9).
+This file is instruction surface only; it does not implement control flow
+itself.
 
-## When to reach for the capability
+## When to invoke
 
-- A document, plan, or code snippet has been produced and now needs targeted improvement.
-- The improvement can be guided by a clear delta or review comment.
-- The agent should record the trajectory of changes in `capabilities.trajectory` before applying the next refinement.
+A repeated procedure demonstrably underperforms and there is concrete
+evidence pointing at a specific edit.
 
-## What it is not
+## Do NOT invoke when
 
-- This skill does not implement the refinement loop or approval gate. It only tells the agent when to reach for the `capabilities.trajectory` stub.
+- Acting on a hunch with no evidence.
+- Rewriting doctrine — that requires management approval, not a
+  self-directed edit.
+
+## What it provides once implemented
+
+- Small-edit cap on any single proposal.
+- Reviewer-is-not-actor separation.
+- Evidence floor before a proposal is even generated.
+- Append-only history and rollback (via `harness-state`).
+
+## Relationship to governance
+
+The Coach (or equivalent) proposes; management approves. This capability
+never grants an agent authority to unilaterally change a procedure that
+Paperclip, the Wiki, or a repository already governs.
