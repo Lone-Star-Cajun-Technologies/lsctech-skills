@@ -4,10 +4,9 @@ LON-68 (Epic 2 of LON-61, per LON-60 architecture report §4.1 / §6) and its
 duplicate-track sibling LON-63 ("Harness-Agnostic Continual Refinement
 Layer") — both scope the same deliverable: a durable, scoped, reviewable
 ledger for organizational memory. Built once here, against both issues'
-acceptance criteria, for the same reason `polaris-worker-skill` was built
-once against LON-70 and LON-64 (see that skill's README and LON-75): a
-second implementation on top of the same primitives would just duplicate
-it. Flagged on LON-75 (open reconciliation issue) for Cove to confirm.
+acceptance criteria: a second implementation on top of the same primitives
+would just duplicate it. Flagged on LON-75 (open reconciliation issue) for
+Cove to confirm.
 
 ## Interface
 
@@ -49,7 +48,7 @@ index.json                       id -> {type, scope, taskId} routing table
 Plain JSON files, no database — consistent with this sandbox having no
 provisioned repo/DB for this initiative yet (see Known gap).
 
-## Integration points (`src/memoryBridge.mjs`)
+## Integration points (`src/integrations/hermes-memory/memoryBridge.mjs`)
 
 - `exportGlobalMemoryToFile(item, memoryDir)` — projects a global
   `memory`-type ledger item into this agent's existing frontmatter-memory
@@ -68,7 +67,8 @@ provisioned repo/DB for this initiative yet (see Known gap).
 - `src/schema.mjs` — item-kind/scope constants and the shared validators
   used by every mutation path (`create`, `refine`, `rollback`).
 - `src/store.mjs` — `HarnessStateStore` (CRUD + refine + rollback).
-- `src/memoryBridge.mjs` — the two integration touchpoints above.
+- `src/integrations/hermes-memory/memoryBridge.mjs` — the two integration
+  touchpoints above.
 - `test/runStoreTests.mjs` — 12 tests, run with `node
   test/runStoreTests.mjs`. Covers both issues' literal acceptance
   criteria directly: "create in task A, retrieve in task B, refine with
@@ -77,8 +77,7 @@ provisioned repo/DB for this initiative yet (see Known gap).
 
 ## Known gap
 
-Same as `recursive-execution-skill` and `polaris-worker-skill`: this lives
-in the agent workspace, not a company repository — no Polaris/Evo (or
-other) project/repo record exists in Paperclip yet for this initiative,
-and this sandbox has no `git`. Ready to move into a repo verbatim once one
-is designated.
+Same as `recursive-execution-skill`: this lives in the agent workspace,
+not a company repository — no Polaris/Evo (or other) project/repo record
+exists in Paperclip yet for this initiative, and this sandbox has no
+`git`. Ready to move into a repo verbatim once one is designated.

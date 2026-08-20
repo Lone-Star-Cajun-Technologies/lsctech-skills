@@ -37,7 +37,6 @@ jobs:
           - recursive-execution-skill
           - harness-state-store
           - continual-refinement-layer
-          - polaris-worker-skill
     steps:
       - uses: actions/checkout@v4
 
@@ -47,8 +46,7 @@ jobs:
 
       - name: Run ${{ matrix.module }} tests
         run: |
-          for f in capabilities-nodejs/${{ matrix.module }}/test/*.mjs; do
-            echo "::group::$f"
+          find capabilities-nodejs/${{ matrix.module }}/test -name '*.mjs' | while read -r f; do
+            echo "::$f"
             node "$f"
-            echo "::endgroup::"
           done

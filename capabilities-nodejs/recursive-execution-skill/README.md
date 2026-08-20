@@ -66,13 +66,15 @@ registry, no-progress detection, compaction) is self-contained.
 - `src/compaction.mjs` — token-threshold trace summarization, keeping a
   recent window verbatim.
 - `src/recursiveLoop.mjs` — orchestrator (`runRecursiveLoop`).
-- `src/paperclipSpawn.mjs` — Paperclip task-lifecycle integration.
+- `src/adapters/paperclip/paperclipSpawn.mjs` — Paperclip task-lifecycle
+  integration (consumer-specific adapter, not part of the public API).
 - `test/runLoopTests.mjs` — acceptance-criteria test loop: exercises all
   four stop modes plus usage attribution and compaction. Run with
   `node test/runLoopTests.mjs`.
-- `test/paperclipSpawnTests.mjs` — tests for Paperclip spawner integration.
+- `test/adapters/paperclip/paperclipSpawnTests.mjs` — tests for Paperclip
+  spawner integration.
 
-## Paperclip task-lifecycle integration (`src/paperclipSpawn.mjs`)
+## Paperclip task-lifecycle integration (`src/adapters/paperclip/paperclipSpawn.mjs`)
 
 LON-67's scope beyond LON-62: `createPaperclipSpawner()` implements
 `spawn(taskSpec) -> handle` against the real Paperclip API
@@ -81,7 +83,7 @@ child issues, attributed to the parent via `requestDepth` + `parentId`.
 Because real Paperclip children run asynchronously across wakes (the
 platform pauses/wakes the parent via `blockParentUntilDone`, not a
 same-process blocking wait), this is a two-phase pattern rather than a
-synchronous `spawnChild`: `spawn()` this wake, `collectResult()`/
+synchronous `spawnChild`: `spawn()` this wake, `collectResult()` /
 `requireResult()` a later wake once the child is terminal. See the file's
 header comment for the full contract.
 

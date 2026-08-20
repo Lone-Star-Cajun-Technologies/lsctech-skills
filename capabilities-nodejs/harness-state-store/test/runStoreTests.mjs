@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { HarnessStateStore, exportGlobalMemoryToFile, wikiReference } from '../src/index.mjs';
+import { HarnessStateStore } from '../src/index.mjs';
+import { exportGlobalMemoryToFile, wikiReference } from '../src/integrations/hermes-memory/memoryBridge.mjs';
 
 const tests = [];
 function test(name, fn) {

@@ -4,6 +4,20 @@ All notable changes to this repository are documented here. Format based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions
 correspond to `VERSION`.
 
+## [0.3.0] - 2026-08-20
+
+### Changed
+
+- **Boundary cleanup (LON-64 PR #1 review):** removed `polaris-worker-skill/`
+  from lsctech-skills — it is Polaris-specific integration/policy and
+  violates the repo's core invariant. Paperclip adapter
+  (`paperclipSpawn.mjs`) moved to
+  `recursive-execution-skill/src/adapters/paperclip/` and removed from the
+  public API surface. Hermes memory bridge (`memoryBridge.mjs`) moved to
+  `harness-state-store/src/integrations/hermes-memory/` and removed from
+  the public API surface. CI matrix and READMEs updated to match.
+  38/38 tests passing (polaris-worker-skill removed, paperclip+loop split).
+
 ## [0.2.0] - 2026-08-20
 
 ### Added

@@ -73,5 +73,4 @@ mechanics, plus multi-item snapshot/restore, which nothing else built.
 Same as every other workspace artifact under LON-61: lives in the agent
 workspace, not a company repository — no repo has been designated for this
 initiative yet and this sandbox has no `git`. Ready to move into a repo
-verbatim once one is designated (see `harness-state-store/README.md`,
-`polaris-worker-skill/README.md` for the same note).
+verbatim once one is designated (see `harness-state-store/README.md` for the same note).

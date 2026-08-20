@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createPaperclipSpawner, ChildNotResolvedError, fetchIssueTokenUsage } from '../src/paperclipSpawn.mjs';
+import { createPaperclipSpawner, ChildNotResolvedError, fetchIssueTokenUsage } from '../../../src/adapters/paperclip/paperclipSpawn.mjs';
 
 const results = [];
 function test(name, fn) {

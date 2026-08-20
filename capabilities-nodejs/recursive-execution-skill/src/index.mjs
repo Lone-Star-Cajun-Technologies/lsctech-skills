@@ -3,4 +3,5 @@ export { BudgetTracker } from './budgetTracker.mjs';
 export { ChildAgentRegistry } from './childRegistry.mjs';
 export { NoProgressDetector } from './noProgressDetector.mjs';
 export { compactIfNeeded, estimateTokens } from './compaction.mjs';
-export { createPaperclipSpawner, ChildNotResolvedError, fetchIssueTokenUsage } from './paperclipSpawn.mjs';
+// paperclipSpawn is available from './adapters/paperclip/paperclipSpawn.mjs'
+// but not exported from the public API to maintain harness-agnosticism.

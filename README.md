@@ -73,11 +73,15 @@ lsctech-skills/
 
 ## Node.js capability implementations (`capabilities-nodejs/`, landed LON-119)
 
-The four Prime-derived modules LON-101 finding F1 reported as lost
+The three Prime-derived modules LON-101 finding F1 reported as lost
 (`recursive-execution-skill`, `harness-state-store`,
-`continual-refinement-layer`, `polaris-worker-skill`) were not lost — they
-were stranded in an un-pushed agent sandbox. LON-119 recovered and landed
-them here as-is.
+`continual-refinement-layer`) were not lost — they were stranded in an
+un-pushed agent sandbox. LON-119 recovered and landed them here as-is.
+
+Note: `polaris-worker-skill` was initially landed in this repo during
+LON-119 as well, but was removed in the LON-64 cleanup. It is
+Polaris-specific integration/policy — not generic — and violates the
+lsctech-skills core invariant.
 
 They are **JavaScript/Node (`.mjs`, zero external dependencies)**, not
 Python, and live in `capabilities-nodejs/` rather than inside the
@@ -100,17 +104,15 @@ Modules landed, each with its own `README.md`/`src/`/`test/`:
 
 - `capabilities-nodejs/recursive-execution-skill/` — bounded
   spawn → child → result → parent-continuation loop: budget tracking, depth
-  ceiling, no-progress detection, compaction. 17/17 tests passing.
+  ceiling, no-progress detection, compaction. Paperclip integration adapter
+  at `src/adapters/paperclip/paperclipSpawn.mjs`. 17/17 tests passing.
 - `capabilities-nodejs/harness-state-store/` — typed, scoped
   (local/global), evidence-gated memory ledger with append-only history and
-  rollback. 12/12 tests passing.
+  rollback. Hermes memory integration at
+  `src/integrations/hermes-memory/memoryBridge.mjs`. 12/12 tests passing.
 - `capabilities-nodejs/continual-refinement-layer/` — evidence-gated
   proposal + review gate, plus multi-item snapshot/restore, built on top of
   `harness-state-store`. 9/9 tests passing.
-- `capabilities-nodejs/polaris-worker-skill/` — acceptance-criteria
-  quality gate, a self-repair cap distinct from raw budget, and a
-  Medic-shaped trace, built on top of `recursive-execution-skill`.
-  5/5 tests passing.
 
 CI runs every module's test suite on each push/PR via the `test-nodejs`
 matrix job in `.github/workflows/ci.yml`.
