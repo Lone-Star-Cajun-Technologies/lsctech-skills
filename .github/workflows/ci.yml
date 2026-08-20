@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package
+        run: pip install -e . pytest
+
+      - name: Import guard — capabilities/ must not import Polaris or Evo (LON-101 §7.2)
+        run: |
+          if grep -rEni --include='*.py' '^[[:space:]]*(import|from)[[:space:]]+(polaris|evo)([._[:space:]]|$)' capabilities/; then
+            echo "::error::Forbidden import found under capabilities/ — capabilities must not import Polaris or Evo (LON-101 §7.2 forbidden edges)."
+            exit 1
+          fi
+          echo "Import guard passed: no Polaris/Evo imports under capabilities/."
+
+      - name: Run tests
+        run: pytest capabilities/tests -v
