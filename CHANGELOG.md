@@ -4,6 +4,20 @@ All notable changes to this repository are documented here. Format based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions
 correspond to `VERSION`.
 
+## [0.4.0] - 2026-08-21
+
+### Changed
+
+- **LON-137 documentation revision:** updated `README.md` and
+  `recursive-execution-skill/README.md` to reflect the LON-137
+  capability-comparison disposition. The worker-side recursive self-repair
+  loop (`polaris-worker-skill`) is explicitly rejected per POL-288. Four
+  deterministic primitives are documented as Foreman-layer enhancements:
+  continuation counter + wall-clock deadline, heartbeat-delta no-progress
+  detection, telemetry compaction, and bounded Foreman re-dispatch policy.
+  All are zero-token and role-safe. Token telemetry noted as an explicit
+  open item. 38/38 tests passing.
+
 ## [0.3.0] - 2026-08-20
 
 ### Changed

@@ -134,6 +134,154 @@ session.
   character-count estimate whenever a caller supplies them; the estimate
   remains only as a fallback for callers that can't report real usage.
 
+## Foreman-Boundary Primitives for Polaris Integration (LON-137)
+
+LON-137 (Prime vs Polaris capability comparison) concluded that the
+worker-side recursive self-repair loop must be rejected — it violates
+Worker/Medic/Foreman separation (POL-288). However, four deterministic
+primitives from this skill are suitable for Polaris integration at the
+**Foreman layer**:
+
+| Primitive | Source module | Foreman home | Token impact |
+|---|---|---|---|
+| Continuation counter + wall-clock deadline | `budgetTracker.mjs` | Foreman dispatch logic | 0 |
+| Heartbeat-delta no-progress detection | `noProgressDetector.mjs` | Foreman staleness detection | 0 |
+| Telemetry compaction | `compaction.mjs` | Telemetry writer | 0 |
+| Bounded Foreman re-dispatch policy | `recursiveLoop.mjs` | Foreman dispatch loop | 0 |
+
+All four are deterministic — no new model calls. All four are
+role-neutral: they measure state without making dispatch decisions that
+belong to Worker or Medic.
+
+### 1. Continuation Counter + Wall-Clock Deadline
+
+**Prime behavior:** `BudgetTracker` tracks `continuationsUsed` against
+`maxContinuations` and `elapsedMs()` against `maxWallClockMs`. A loop
+is never allowed to run without all four caps set — the constructor
+throws if any budget dimension is missing.
+
+**Foreman home:** Foreman dispatch logic. Before each dispatch, check
+`dispatched_continuations < maxContinuations` AND `now() < wallclock_deadline`.
+
+**Why Foreman:** Foreman owns dispatch decisions. A continuation counter
+counts re-dispatches (not just first-level children), closing a gap in
+Polaris's flat `max_children` model. A wall-clock deadline stops
+dispatching after a configured time, independent of heartbeat.
+
+**Trigger/threshold:** `continuationsUsed >= maxContinuations` OR
+`elapsedMs() >= maxWallClockMs`. Either one trips the stop condition.
+
+**Failure/escalation:** When either threshold is hit, the loop returns
+`budget_exhausted` with `exhaustedDimension` naming which limit was
+reached. Foreman escalates instead of re-dispatching.
+
+**Token impact:** Zero — integer increment and timestamp comparison.
+
+**Tests:** `runLoopTests.mjs` — "stops with budget_exhausted when turns
+run out before the gate passes" (turns dimension), "reconcileTokens takes
+the max of tracked vs. real usage" (wall-clock + token tracking).
+
+### 2. Heartbeat-Delta No-Progress Detection
+
+**Prime behavior:** `NoProgressDetector` tracks evaluation score across
+iterations and trips after `patience` consecutive iterations that fail
+to beat the best score by more than `epsilon`. This detects spin loops
+that a binary staleness threshold misses.
+
+**Foreman home:** Foreman staleness logic. Compare consecutive heartbeat
+telemetry: if `current_step_id` and `last_output_ref` are unchanged
+across N consecutive heartbeats (configurable, default 3), declare
+stagnation.
+
+**Why Foreman:** Foreman already owns staleness detection (current
+Polaris: 120s binary threshold). This adds detection of "heartbeat
+present but no forward progress" — a worker spinning in a loop still
+emits heartbeats, so the binary threshold never fires. The
+Prime-derived detector compares observable output deltas.
+
+**Trigger/threshold:** `streak >= patience` (default 2) consecutive
+non-improving iterations. `epsilon` sets the minimum improvement to
+reset the streak.
+
+**Failure/escalation:** When stagnation is detected, the loop calls
+`onEscalate(reason, state)` before returning `no_progress`. Foreman
+escalates to Medic or halts.
+
+**Token impact:** Zero — pure numeric comparison of evaluation scores.
+
+**Tests:** `runLoopTests.mjs` — "stops with no_progress and fires
+escalation when the score stalls".
+
+### 3. Telemetry Compaction
+
+**Prime behavior:** `compactIfNeeded` summarizes older trace entries
+once estimated token size crosses `thresholdTokens`, keeping the most
+recent entries verbatim (within `keepRecentTokens`). Only the free-text
+trace is compacted — never the structured state (budget ledger, child
+registry).
+
+**Foreman home:** Telemetry writer (append path). When telemetry JSONL
+exceeds a configured event count (default 1000) or byte size (default
+1MB), summarize older events and retain the last 100 verbatim.
+
+**Why Foreman:** Telemetry is a Foreman-owned output stream. Compaction
+prevents unbounded JSONL growth without losing recent context. Polaris's
+resume model is `current-state.json` (mutable snapshot), not telemetry
+replay — so unbounded telemetry only affects audit storage, not
+correctness. Compaction keeps audit storage bounded.
+
+**Trigger/threshold:** `totalTokens > thresholdTokens` (default 8000).
+
+**Failure/escalation:** N/A — compaction is a storage optimization, not
+a control decision. No escalation path.
+
+**Token impact:** Zero — deterministic summarization.
+
+**Tests:** `runLoopTests.mjs` — "compacts older trace entries once the
+token threshold is crossed".
+
+### 4. Bounded Foreman Re-Dispatch Policy
+
+**Prime behavior:** `runRecursiveLoop` iterates with bounded budget,
+stopping on exactly one of: `evaluation_passed`, `budget_exhausted`,
+`no_progress`, or `depth_limit`. "Continue until successful" is
+deliberately not a valid stop condition — every loop is constructed
+with all four budget dimensions set.
+
+**Foreman home:** Foreman dispatch loop. When a Worker seals a
+CompactReturn with `blockers[]` AND `exit_code=1`, AND budget remains,
+AND no-progress has not been detected, Foreman re-dispatches with
+modified scope (from Medic treatment packet, if Medic was involved).
+
+**Why Foreman:** This is the ONLY form of iteration Polaris gains — and
+it's at the Foreman level, not the Worker level. Worker never dispatches.
+Worker never self-repairs. Foreman orchestrates. This preserves all five
+role boundaries from POL-288.
+
+**Trigger/threshold:** CompactReturn has blockers + exit_code=1 +
+`dispatched_continuations < maxContinuations` + no stagnation detected.
+
+**Failure/escalation:** When budget is exhausted (`maxContinuations`
+reached) or stagnation detected, Foreman escalates instead of
+re-dispatching.
+
+**Token impact:** Zero — deterministic bookkeeping.
+
+**Tests:** `runLoopTests.mjs` — all four stop conditions exercised:
+"stops with evaluation_passed", "stops with budget_exhausted", "stops
+with no_progress", "stops with depth_limit".
+
+### Token Telemetry (Open Item)
+
+Token-level usage telemetry remains an explicit open item. Paperclip
+owns hard session limits. Polaris may benefit from token usage as an
+observability/efficiency signal (accepted-work-per-token, wasted-token
+detection). This skill preserves the possibility of consuming usage
+telemetry later via `BudgetTracker.reconcileTokens()` and
+`paperclipSpawn.fetchIssueTokenUsage()`, but does NOT make Polaris
+enforce provider budgets. This is a deliberate open item, not an
+oversight.
+
 ## Known gap
 
 This lives in the agent workspace, not a company repository — no
