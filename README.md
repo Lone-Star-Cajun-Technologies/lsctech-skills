@@ -70,9 +70,82 @@ lsctech-skills/
     bounded-continuation/SKILL.md
 ```
 
+
+## Node.js capability implementations (`capabilities-nodejs/`, landed LON-119)
+
+The three Prime-derived modules LON-101 finding F1 reported as lost
+(`recursive-execution-skill`, `harness-state-store`,
+`continual-refinement-layer`) were not lost — they were stranded in an
+un-pushed agent sandbox. LON-119 recovered and landed them here as-is.
+
+Note: `polaris-worker-skill` was initially landed in this repo during
+LON-119 as well, but was **rejected** per LON-137 (Prime vs Polaris
+capability comparison) — the worker-side recursive self-repair loop
+violates Worker/Medic/Foreman separation (POL-288). It does not belong
+in this repo or in Polaris.
+
+They are **JavaScript/Node (`.mjs`, zero external dependencies)**, not
+Python, and live in `capabilities-nodejs/` rather than inside the
+`capabilities/` package above. This is a deliberate divergence, not an
+oversight: `capabilities/` was scaffolded in LON-103 assuming a *future*
+Python reimplementation under Epic 8/9 (pytest-only CI gate, `__all__ == []`
+stub tests). These modules are already implemented and independently
+tested (38/38 tests passing across all three at this revision). LON-101 §8
+requires preserving existing tested implementations rather than rewriting
+them without a concrete reason — porting working, tested code to Python
+solely to fit the stub layout would be exactly that.
+
+Modules landed, each with its own `README.md`/`src/`/`test/`:
+
+- `capabilities-nodejs/recursive-execution-skill/` — bounded
+  spawn → child → result → parent-continuation loop: budget tracking, depth
+  ceiling, no-progress detection, compaction. Paperclip integration adapter
+  at `src/adapters/paperclip/paperclipSpawn.mjs`. 9/9 tests passing.
+- `capabilities-nodejs/harness-state-store/` — typed, scoped
+  (local/global), evidence-gated memory ledger with append-only history and
+  rollback. Hermes memory integration at
+  `src/integrations/hermes-memory/memoryBridge.mjs`. 12/12 tests passing.
+- `capabilities-nodejs/continual-refinement-layer/` — evidence-gated
+  proposal + review gate, plus multi-item snapshot/restore, built on top of
+  `harness-state-store`. 9/9 tests passing.
+
+CI runs every module's test suite on each push/PR via the `test-nodejs`
+matrix job in `.github/workflows/ci.yml`.
+
 As of this revision, every `capabilities/*` module is a stub (package
 metadata + docstring only, no behavior). Real implementations land under
 Epic 8 (recursive execution) and Epic 9 (harness state) — see LON-101 §10.
+
+## Foreman-Boundary Primitives for Polaris (LON-137)
+
+The four deterministic primitives from `recursive-execution-skill` that
+LON-137 identified as suitable for Polaris integration — at the Foreman
+layer, not the Worker layer:
+
+| Primitive | Source module | Foreman home | Token impact |
+|---|---|---|---|
+| Continuation counter + wall-clock deadline | `budgetTracker.mjs` | Foreman dispatch logic | 0 |
+| Heartbeat-delta no-progress detection | `noProgressDetector.mjs` | Foreman staleness detection | 0 |
+| Telemetry compaction | `compaction.mjs` | Telemetry writer | 0 |
+| Bounded Foreman re-dispatch policy | `recursiveLoop.mjs` | Foreman dispatch loop | 0 |
+
+All four are **deterministic, zero-token, and role-safe**. Worker never
+dispatches. Worker never self-repairs. Foreman orchestrates. This
+preserves all five role boundaries from POL-288.
+
+### Token Telemetry (Open Item)
+
+Token-level usage telemetry is an explicit **open item**. Paperclip owns
+hard session limits. Polaris may benefit from token usage as an
+observability/efficiency signal (accepted-work-per-token, wasted-token
+detection). The skill preserves the possibility of consuming usage
+telemetry later via `BudgetTracker.reconcileTokens()` and
+`paperclipSpawn.fetchIssueTokenUsage()`, but does NOT make Polaris enforce
+provider budgets in this PR.
+
+See `capabilities-nodejs/recursive-execution-skill/README.md` for the
+full primitive documentation (Prime behavior, Foreman home, trigger/threshold,
+failure/escalation, token impact, tests) for each primitive.
 
 ## Versioning
 

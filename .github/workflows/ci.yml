@@ -28,3 +28,25 @@ jobs:
 
       - name: Run tests
         run: pytest capabilities/tests -v
+
+  test-nodejs:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module:
+          - recursive-execution-skill
+          - harness-state-store
+          - continual-refinement-layer
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run ${{ matrix.module }} tests
+        run: |
+          find capabilities-nodejs/${{ matrix.module }}/test -name '*.mjs' | while read -r f; do
+            echo "::$f"
+            node "$f"
+          done
